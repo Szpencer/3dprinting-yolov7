@@ -14,10 +14,6 @@ from utils.general import check_img_size, check_requirements, check_imshow, non_
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
-#image constants
-w = 640
-h = 295
-
 
 def detect(save_img=False):
     source, weights, view_img, save_txt, imgsz, trace = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
@@ -122,18 +118,21 @@ def detect(save_img=False):
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
+                    ###
+                    xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                    img_h = im0.shape[0] #295
+                    bby = xywh[1] * img_h
+                    bbheight = xywh[3] * img_h
+                    print("BBy and BBheight:")
+                    print(bby)
+                    print(bbheight)
+                    print(cls)
+                    ###
                     if save_txt:  # Write to file
-                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                        # xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)  # label format
                         with open(txt_path + '.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
-                        print("-------------------------------------------------------------------------")
-                        print("Image shape w/h:")
-                        print(img.shape[2])
-                        print(img.shape[3])
-                        print("ikipszilonvéhá értéke:")
-                        print(xywh)
-                        print("-------------------------------------------------------------------------")
                     if save_img or view_img:  # Add bbox to image
                         label = f'{names[int(cls)]} {conf:.2f}'
                         plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=1)
