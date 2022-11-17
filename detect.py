@@ -14,6 +14,10 @@ from utils.general import check_img_size, check_requirements, check_imshow, non_
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
+#image constants
+w = 640
+h = 295
+
 
 def detect(save_img=False):
     source, weights, view_img, save_txt, imgsz, trace = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
@@ -124,6 +128,9 @@ def detect(save_img=False):
                         with open(txt_path + '.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
                         print("-------------------------------------------------------------------------")
+                        print("Image shape w/h:")
+                        print(img.shape[2])
+                        print(img.shape[3])
                         print("ikipszilonvéhá értéke:")
                         print(xywh)
                         print("-------------------------------------------------------------------------")
