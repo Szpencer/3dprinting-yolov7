@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
-from numpy import random
+from numpy import printoptions, random
 
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
@@ -24,6 +24,7 @@ def detect(save_img=False):
     # Directories
     save_dir = Path(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    (save_dir / 'evaluation' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir for evaluation
 
     # Initialize
     set_logging()
@@ -111,6 +112,7 @@ def detect(save_img=False):
             p = Path(p)  # to Path
             save_path = str(save_dir / p.name)  # img.jpg
             txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
+            txt_path_eval = str(save_dir / 'evaluation' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # evaluation txt files
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             if len(det):
                 # Rescale boxes from img_size to im0 size
@@ -146,14 +148,16 @@ def detect(save_img=False):
             
             # Evaluaton of the printing process
             evaluation_var = nozzle_height - workpiece_height   # Positive number means overlapping between the two BB
-             if evaluation_var > 0:
-              print_state = "Printing OK" 
-              print("The printing is going on the expected way!")
-              cv2.putText(im0, print_state, (0,0), fontFace = cv2.FONT_HERSHEY_COMPLEX, fontScale = 5, color = (0,225,0))
-              
+            if evaluation_var > 0:
+              print_state = "OK" 
+              # print("The printing is going on the expected way!")
+                           
             else:
-              print_state = "Printing NOT OK"
-              print("The filament is stucked in the extruder head!")
+              print_state = "NOK"
+              # print("The filament is stucked in the extruder head!")
+            
+            with open(txt_path_eval + '.txt', 'a') as f:  #saves the printing status
+                  f.write(print_state)
 
             # Print time (inference + NMS)
             print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
