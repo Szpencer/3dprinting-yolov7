@@ -59,7 +59,7 @@ def detect(save_img=False):
     # Get names and colors
     names = model.module.names if hasattr(model, 'module') else model.names
     colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
-
+    
     # Run inference
     if device.type != 'cpu':
         model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
@@ -73,7 +73,12 @@ def detect(save_img=False):
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
         if img.ndimension() == 3:
             img = img.unsqueeze(0)
-
+        
+        #Variables for the nozzle-workpiece distance calculation #Szpencer#:
+        nozzle_height = 0
+        workpiece_height = 0
+        evaluation_var = 0
+        
         # Warmup
         if device.type != 'cpu' and (old_img_b != img.shape[0] or old_img_h != img.shape[2] or old_img_w != img.shape[3]):
             old_img_b = img.shape[0]
@@ -116,18 +121,20 @@ def detect(save_img=False):
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
-                # Write results
+                # Evaluate the results
                 for *xyxy, conf, cls in reversed(det):
-                    ###
+                    ###Szpencer#
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                     img_h = im0.shape[0] #295
                     bby = xywh[1] * img_h
                     bbheight = xywh[3] * img_h
-                    print("BBy and BBheight:")
-                    print(bby)
-                    print(bbheight)
-                    print(cls)
-                    ###
+                    
+                    if cls.item() == 1.0:       # 1 - workpiece
+                      workpiece_height = bby - (bbheight / 2)
+                    else:                       # 0 - nozzle
+                      nozzle_height = bby + (bbheight / 2)
+                    
+                    # Save to txt
                     if save_txt:  # Write to file
                         # xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)  # label format
@@ -136,6 +143,17 @@ def detect(save_img=False):
                     if save_img or view_img:  # Add bbox to image
                         label = f'{names[int(cls)]} {conf:.2f}'
                         plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=1)
+            
+            # Evaluaton of the printing process
+            evaluation_var = nozzle_height - workpiece_height   # Positive number means overlapping between the two BB
+             if evaluation_var > 0:
+              print_state = "Printing OK" 
+              print("The printing is going on the expected way!")
+              cv2.putText(im0, print_state, (0,0), fontFace = cv2.FONT_HERSHEY_COMPLEX, fontScale = 5, color = (0,225,0))
+              
+            else:
+              print_state = "Printing NOT OK"
+              print("The filament is stucked in the extruder head!")
 
             # Print time (inference + NMS)
             print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
